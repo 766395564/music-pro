@@ -1,4 +1,5 @@
 <?php
+error_reporting(0);
 header('Content-Type: application/json; charset=utf-8');
 
 // 1. 接收参数 (严格匹配文档截图中的 GET 请求参数)
@@ -40,3 +41,4 @@ if (isset($raw['data']['results'])) {
 
 // 5. 输出最终 JSON
 echo json_encode($output, JSON_UNESCAPED_UNICODE);
+
