@@ -1,13 +1,13 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-// 1. 获取关键词并处理乱码
+// 获取参数
 $keyword = $_GET['keyword'] ?? '周杰伦';
-if (!preg_match('//u', $keyword)) {
-    $keyword = mb_convert_encoding($keyword, 'UTF-8', 'GBK');
-}
+$type = $_GET['type'] ?? 'search';
+$source = $_GET['source'] ?? 'netease';
 
-// 2. 这里的地址是网易云的搜索接口
+// 学习点：它背后的逻辑其实是去请求各大平台的公开API
+// 我们在这里以网易云为例进行 100% 模拟
 $url = "https://music.163.com/api/search/get/web?s=" . urlencode($keyword) . "&type=1&limit=10";
 
 $ch = curl_init();
@@ -20,25 +20,25 @@ curl_close($ch);
 $data = json_decode($response, true);
 $results = [];
 
-// 3. 整理结果给 App 使用
 if (isset($data['result']['songs'])) {
     foreach ($data['result']['songs'] as $song) {
+        // 学习点：按照你给的参考图，严格输出字段
         $results[] = [
-            'songName' => $song['name'],
+            'id'       => (string)$song['id'],
+            'name'     => $song['name'],
             'artist'   => $song['artists'][0]['name'],
             'album'    => $song['album']['name'],
-            'songUrl'  => "http://music.163.com/song/media/outer/url?id=" . $song['id'] . ".mp3"
+            'platform' => $source,
+            'url'      => "https://music.163.com/song/media/outer/url?id=" . $song['id'] . ".mp3"
         ];
     }
 }
 
-// 4. 输出最终结果
+// 最终返回格式：完全模仿你给出的成功截图
 echo json_encode([
     "code" => 200,
     "message" => "success",
     "data" => [
-        "keyword" => $keyword,
         "results" => $results
     ]
 ], JSON_UNESCAPED_UNICODE);
-
