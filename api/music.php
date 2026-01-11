@@ -1,45 +1,42 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-// 1. 获取 App 传来的参数
+// 1. 接收参数 (严格匹配文档截图中的 GET 请求参数)
 $keyword = $_GET['keyword'] ?? '';
 $page = (int)($_GET['page'] ?? 1);
 
-// 2. 这里的 $targetUrl 指向你那个“肯定可用”的接口地址
-// 并补全它在报错中要求的 type 和 source 参数
+// 2. 调用那个“必成”的接口，并补全它需要的 type 和 source
 $targetUrl = "https://music-dl.sayqz.com/api?type=aggregateSearch&source=all&keyword=" . urlencode($keyword) . "&page=" . $page;
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $targetUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 $response = curl_exec($ch);
 curl_close($ch);
 
-// 3. 解析拿到的数据
 $raw = json_decode($response, true);
 
-// 4. 关键：重新包装成【巨魔智能体】文档截图里的样子
-// 文档要求：code, message, data (含 keyword, limit, page, platforms, results)
-$finalData = [
+// 3. 严格按照文档 要求的响应格式进行封装
+$output = [
     "code" => 200,
     "message" => "success",
     "data" => [
         "keyword" => $keyword,
         "limit" => 10,
         "page" => $page,
-        "platforms" => ["all"], 
+        "platforms" => ["all"], // 文档要求必须有参与聚合的平台列表
         "results" => []
     ]
 ];
 
-// 如果原接口有数据，就把 results 提取出来放进我们的格式里
+// 4. 将提取的数据放入 results 数组
 if (isset($raw['data']['results'])) {
-    $finalData['data']['results'] = $raw['data']['results'];
+    $output['data']['results'] = $raw['data']['results'];
 } elseif (isset($raw['results'])) {
-    $finalData['data']['results'] = $raw['results'];
+    $output['data']['results'] = $raw['results'];
 }
 
-// 5. 输出
-echo json_encode($finalData, JSON_UNESCAPED_UNICODE);
+// 5. 输出最终 JSON
+echo json_encode($output, JSON_UNESCAPED_UNICODE);
