@@ -1,0 +1,5 @@
+{
+  "type": "php",
+  "root": ".",
+  "index": "index.php"
+}
