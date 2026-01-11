@@ -1,44 +1,45 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-// 获取参数
-$keyword = $_GET['keyword'] ?? '周杰伦';
-$type = $_GET['type'] ?? 'search';
-$source = $_GET['source'] ?? 'netease';
+// 1. 获取 App 传来的参数
+$keyword = $_GET['keyword'] ?? '';
+$page = (int)($_GET['page'] ?? 1);
 
-// 学习点：它背后的逻辑其实是去请求各大平台的公开API
-// 我们在这里以网易云为例进行 100% 模拟
-$url = "https://music.163.com/api/search/get/web?s=" . urlencode($keyword) . "&type=1&limit=10";
+// 2. 这里的 $targetUrl 指向你那个“肯定可用”的接口地址
+// 并补全它在报错中要求的 type 和 source 参数
+$targetUrl = "https://music-dl.sayqz.com/api?type=aggregateSearch&source=all&keyword=" . urlencode($keyword) . "&page=" . $page;
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_URL, $targetUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Referer: https://music.163.com/']);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 $response = curl_exec($ch);
 curl_close($ch);
 
-$data = json_decode($response, true);
-$results = [];
+// 3. 解析拿到的数据
+$raw = json_decode($response, true);
 
-if (isset($data['result']['songs'])) {
-    foreach ($data['result']['songs'] as $song) {
-        // 学习点：按照你给的参考图，严格输出字段
-        $results[] = [
-            'id'       => (string)$song['id'],
-            'name'     => $song['name'],
-            'artist'   => $song['artists'][0]['name'],
-            'album'    => $song['album']['name'],
-            'platform' => $source,
-            'url'      => "https://music.163.com/song/media/outer/url?id=" . $song['id'] . ".mp3"
-        ];
-    }
-}
-
-// 最终返回格式：完全模仿你给出的成功截图
-echo json_encode([
+// 4. 关键：重新包装成【巨魔智能体】文档截图里的样子
+// 文档要求：code, message, data (含 keyword, limit, page, platforms, results)
+$finalData = [
     "code" => 200,
     "message" => "success",
     "data" => [
-        "results" => $results
+        "keyword" => $keyword,
+        "limit" => 10,
+        "page" => $page,
+        "platforms" => ["all"], 
+        "results" => []
     ]
-], JSON_UNESCAPED_UNICODE);
+];
+
+// 如果原接口有数据，就把 results 提取出来放进我们的格式里
+if (isset($raw['data']['results'])) {
+    $finalData['data']['results'] = $raw['data']['results'];
+} elseif (isset($raw['results'])) {
+    $finalData['data']['results'] = $raw['results'];
+}
+
+// 5. 输出
+echo json_encode($finalData, JSON_UNESCAPED_UNICODE);
