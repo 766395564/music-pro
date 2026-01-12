@@ -1,20 +1,20 @@
 <?php
-// 1. 屏蔽错误并清理缓冲区（防止主页内容混入）
+// 1. 暴力清除所有干扰，确保只输出 JSON
 error_reporting(0);
 ob_start();
 header('Content-Type: application/json; charset=utf-8');
 
-// 2. 获取参数（支持 word 或 keyword）
+// 2. 获取参数
 $word = $_GET['word'] ?? $_GET['keyword'] ?? '';
 
-// 3. 如果没参数，直接清理缓冲区并报错
+// 3. 如果没有关键词，输出提示并结束
 if (empty($word)) {
     ob_end_clean();
     echo json_encode(["code" => 400, "msg" => "请输入歌名"]);
     exit;
 }
 
-// 4. 发起请求
+// 4. 调用源接口
 $apiUrl = "https://api.liuzhijin.cn/music/?type=search&word=" . urlencode($word);
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $apiUrl);
@@ -26,7 +26,7 @@ curl_close($ch);
 
 $data = json_decode($response, true);
 
-// 5. 格式化输出
+// 5. 格式化输出 (严格匹配制作要求)
 if ($data && isset($data['data'][0])) {
     $song = $data['data'][0];
     $output = [
@@ -41,7 +41,7 @@ if ($data && isset($data['data'][0])) {
     $output = ["code" => 404, "msg" => "未找到歌曲"];
 }
 
-// 6. 最终清理并输出纯净JSON
+// 6. 输出最终结果
 ob_end_clean();
 echo json_encode($output, JSON_UNESCAPED_UNICODE);
 exit;
