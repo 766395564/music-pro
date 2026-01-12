@@ -1,45 +1,40 @@
 <?php
+// 强制屏蔽所有错误输出，确保不干扰 JSON
 error_reporting(0);
+ob_start(); 
+
 header('Content-Type: application/json; charset=utf-8');
 
-// 1. 获取关键词
-$keyword = $_GET['word'] ?? $_GET['keyword'] ?? '';
+// 1. 获取参数
+$word = $_GET['word'] ?: $_GET['keyword'] ?: '';
 
-if (empty($keyword)) {
+if (empty($word)) {
+    ob_end_clean();
     die(json_encode(["code" => 400, "msg" => "请输入歌名"]));
 }
 
-// 2. 调用核心解析源 (确保使用你验证过的这个源)
-$apiUrl = "https://api.liuzhijin.cn/music/?type=search&word=" . urlencode($keyword);
+// 2. 核心请求
+$apiUrl = "https://api.liuzhijin.cn/music/?type=search&word=" . urlencode($word);
+$response = file_get_contents($apiUrl);
+$data = json_decode($response, true);
 
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $apiUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-$response = curl_exec($ch);
-curl_close($ch);
-
-$remoteData = json_decode($response, true);
-
-// 3. 严格匹配你要求的格式 (去除所有多余层级)
-if ($remoteData && isset($remoteData['data'][0])) {
-    $item = $remoteData['data'][0];
-    
-    $output = [
-        "code"      => 200,
-        "title"     => $item['title'] ?: "未知歌名",
-        "singer"    => $item['author'] ?: "未知歌手",
-        "cover"     => $item['pic'] ?: "",
-        "music_url" => $item['url'] ?: "",
-        "lyric"     => $item['lrc'] ?: "[00:00.00]暂无歌词"
+// 3. 严格适配点歌格式
+if ($data && isset($data['data'][0])) {
+    $song = $data['data'][0];
+    $res = [
+        "code" => 200,
+        "title" => $song['title'],
+        "singer" => $song['author'],
+        "cover" => $song['pic'],
+        "music_url" => $song['url'],
+        "lyric" => $song['lrc']
     ];
 } else {
-    $output = ["code" => 404, "msg" => "未找到歌曲"];
+    $res = ["code" => 404, "msg" => "未找到歌曲"];
 }
 
-// 4. 重点：清除所有潜在的干扰输出，只打印 JSON
-ob_clean(); 
-echo json_encode($output, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+// 4. 关键：清除缓冲区，只输出点歌 JSON
+ob_end_clean();
+echo json_encode($res, JSON_UNESCAPED_UNICODE);
 exit;
 ?>
